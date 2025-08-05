@@ -1,0 +1,18 @@
+{
+  "ovacion": {
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioovacion1/liveovacion1radio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvovacion2/liveovacion2tv/playlist.m3u8"
+  },
+  "rcrperu": {
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioalfilpress/livealfilpressradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvrcrperu/livercrperutv/playlist.m3u8"
+  },
+  "antares": {
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioantares/liveantaresradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvantares/liveantarestv/playlist.m3u8"
+  },
+  "nazarenas": {
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradionazarenas/livenazarenasradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvnazarenas/livenazarenastv/playlist.m3u8"
+  }
+}
