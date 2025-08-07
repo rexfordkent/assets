@@ -3,6 +3,10 @@
     "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioovacion1/liveovacion1radio/playlist.m3u8",
     "tv": "https://5c3fb01839654.streamlock.net:1963/iptvovacion2/liveovacion2tv/playlist.m3u8"
   },
+  "ovacion2": {
+    "radio": "http://206.217.202.3:1935/ipradioovacion2/liveovacion2radio/playlist.m3u8",
+    "tv": "http://206.217.202.3:1935/iptvovacion1/liveovacion1tv/playlist.m3u8"
+  },
   "rcrperu": {
     "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioalfilpress/livealfilpressradio/playlist.m3u8",
     "tv": "https://5c3fb01839654.streamlock.net:1963/iptvrcrperu/livercrperutv/playlist.m3u8"
