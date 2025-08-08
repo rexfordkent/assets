@@ -43,6 +43,9 @@
   "yanacancha": {
     "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioyanacancha/liveyanacancharadio/playlist.m3u8"
   },
+  "cabecerarcrperu": {
+    "tv": "http://206.217.202.3:8090/hls/rcr_peru_srt/index.m3u8"
+  },
   "demo": {
     "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiodemo/livedemoradio/playlist.m3u8",
     "tv": "https://5c3fb01839654.streamlock.net:1963/iptvdemo/livedemotv/playlist.m3u8"
