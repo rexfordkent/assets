@@ -38,7 +38,7 @@ jobs:
         urllib3.disable_warnings()
         
         def get_sunat_scraperapi():
-            """Obtener SUNAT usando ScraperAPI"""
+            """Obtener SUNAT usando ScraperAPI - VERSION MEJORADA"""
             try:
                 print("Obteniendo SUNAT via ScraperAPI...")
                 
@@ -130,76 +130,11 @@ jobs:
             return {"error": True, "message": "No se pudo obtener de SUNAT"}
         
         def get_sbs_scraperapi():
-            """Obtener SBS usando ScraperAPI"""
+            """Obtener SBS - MANTIENE LA VERSION QUE FUNCIONA BIEN"""
             try:
-                print("\nObteniendo SBS via ScraperAPI...")
+                print("\nObteniendo SBS...")
                 
-                api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
-                target_url = "https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx"
-                
-                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
-                
-                response = requests.get(scraper_url, timeout=30)
-                
-                print(f"SBS Status: {response.status_code}")
-                
-                if response.status_code == 200:
-                    html = response.text
-                    soup = BeautifulSoup(html, 'html.parser')
-                    
-                    # Buscar tabla con Dolar de N.A.
-                    tables = soup.find_all('table')
-                    
-                    for table in tables:
-                        rows = table.find_all('tr')
-                        for row in rows:
-                            row_text = row.get_text()
-                            if 'lar de N.A.' in row_text or 'Dólar de N.A.' in row_text:
-                                tds = row.find_all('td')
-                                if len(tds) >= 3:
-                                    try:
-                                        compra = float(tds[1].get_text(strip=True))
-                                        venta = float(tds[2].get_text(strip=True))
-                                        
-                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                            print(f"SBS tabla encontrado: {compra}/{venta}")
-                                            return {
-                                                "compra": compra,
-                                                "venta": venta,
-                                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                                "fuente": "scraperapi"
-                                            }
-                                    except:
-                                        pass
-                    
-                    # Buscar por patron
-                    valores = re.findall(r'3\.\d{3}', html)
-                    if valores:
-                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
-                        valores_unicos = list(dict.fromkeys(valores_float))
-                        
-                        if len(valores_unicos) >= 2:
-                            print(f"SBS patron: {valores_unicos[0]}/{valores_unicos[1]}")
-                            return {
-                                "compra": valores_unicos[0],
-                                "venta": valores_unicos[1],
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_pattern"
-                            }
-                        elif len(valores_unicos) == 1:
-                            return {
-                                "compra": valores_unicos[0],
-                                "venta": valores_unicos[0],
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_pattern"
-                            }
-                    
-            except Exception as e:
-                print(f"Error SBS: {e}")
-            
-            # Si ScraperAPI falla, intentar directo (SBS no bloquea tanto)
-            try:
-                print("Intentando SBS directo...")
+                # PRIMERO intentar directo sin ScraperAPI (más rápido)
                 response = requests.get(
                     'https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx',
                     headers={'User-Agent': 'Mozilla/5.0'},
@@ -208,20 +143,95 @@ jobs:
                 )
                 
                 if response.status_code == 200:
-                    valores = re.findall(r'3\.\d{3}', response.text)
+                    html = response.text
+                    
+                    # Buscar valores 3.XXX en el HTML
+                    valores = re.findall(r'3\.\d{3}', html)
+                    
                     if valores:
                         valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
                         valores_unicos = list(dict.fromkeys(valores_float))
                         
-                        if valores_unicos:
+                        if len(valores_unicos) >= 2:
+                            print(f"SBS directo: {valores_unicos[0]}/{valores_unicos[1]}")
                             return {
                                 "compra": valores_unicos[0],
-                                "venta": valores_unicos[1] if len(valores_unicos) > 1 else valores_unicos[0],
+                                "venta": valores_unicos[1],
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
                                 "fuente": "direct"
                             }
-            except:
-                pass
+                        elif len(valores_unicos) == 1:
+                            print(f"SBS un valor: {valores_unicos[0]}")
+                            return {
+                                "compra": valores_unicos[0],
+                                "venta": valores_unicos[0],
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "direct"
+                            }
+                    
+                    # Si no encuentra con el método directo, intentar con ScraperAPI
+                    print("Intentando SBS con ScraperAPI para mejor parsing...")
+                    
+                    api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
+                    target_url = "https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx"
+                    scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
+                    
+                    response2 = requests.get(scraper_url, timeout=30)
+                    
+                    if response2.status_code == 200:
+                        html2 = response2.text
+                        soup = BeautifulSoup(html2, 'html.parser')
+                        
+                        # Buscar tabla del dólar
+                        tables = soup.find_all('table')
+                        
+                        for table in tables:
+                            rows = table.find_all('tr')
+                            for row in rows:
+                                celdas = row.find_all('td')
+                                if len(celdas) >= 3:
+                                    texto = celdas[0].get_text(strip=True)
+                                    
+                                    if 'lar de N.A.' in texto or 'Dólar de N.A.' in texto:
+                                        try:
+                                            compra = float(celdas[1].get_text(strip=True))
+                                            venta = float(celdas[2].get_text(strip=True))
+                                            
+                                            if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                                print(f"SBS via ScraperAPI tabla: {compra}/{venta}")
+                                                return {
+                                                    "compra": compra,
+                                                    "venta": venta,
+                                                    "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                                    "fuente": "scraperapi"
+                                                }
+                                        except:
+                                            pass
+                        
+                        # Buscar por patron en ScraperAPI
+                        valores = re.findall(r'3\.\d{3}', html2)
+                        if valores:
+                            valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                            valores_unicos = list(dict.fromkeys(valores_float))
+                            
+                            if valores_unicos:
+                                if len(valores_unicos) >= 2:
+                                    return {
+                                        "compra": valores_unicos[0],
+                                        "venta": valores_unicos[1],
+                                        "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                        "fuente": "scraperapi_pattern"
+                                    }
+                                else:
+                                    return {
+                                        "compra": valores_unicos[0],
+                                        "venta": valores_unicos[0],
+                                        "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                        "fuente": "scraperapi_pattern"
+                                    }
+                    
+            except Exception as e:
+                print(f"Error SBS: {e}")
             
             return {"error": True, "message": "No se pudo obtener de SBS"}
         
