@@ -38,7 +38,7 @@ jobs:
         urllib3.disable_warnings()
         
         def get_sunat_scraperapi():
-            """Obtener SUNAT usando ScraperAPI - ESTE YA FUNCIONABA"""
+            """Obtener SUNAT usando ScraperAPI - SIN HARDCODEO"""
             try:
                 print("Obteniendo SUNAT via ScraperAPI...")
                 
@@ -47,74 +47,64 @@ jobs:
                 
                 scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
                 
-                print(f"Consultando ScraperAPI...")
-                response = requests.get(scraper_url, timeout=30)
+                print(f"URL completa: {scraper_url}")
+                
+                response = requests.get(scraper_url, timeout=40)
                 
                 print(f"Status: {response.status_code}")
-                print(f"Content length: {len(response.text)}")
+                print(f"Headers: {response.headers}")
+                print(f"Content length: {len(response.text) if response.text else 0}")
                 
-                if response.status_code == 200 and len(response.text) > 1000:
+                if response.status_code == 403:
+                    print("ERROR 403: API key invalida o sin creditos")
+                    return {"error": True, "message": "ScraperAPI sin creditos"}
+                
+                if response.status_code == 200:
                     html = response.text
-                    soup = BeautifulSoup(html, 'html.parser')
                     
-                    dia = datetime.now().day
-                    print(f"Buscando dia {dia} en el calendario...")
+                    if len(html) < 100:
+                        print(f"Respuesta muy corta: {html[:100]}")
+                        return {"error": True, "message": "Respuesta invalida de ScraperAPI"}
                     
-                    all_tds = soup.find_all('td')
-                    
-                    for i, td in enumerate(all_tds):
-                        td_text = td.get_text(strip=True)
-                        
-                        if td_text == str(dia):
-                            print(f"Dia {dia} encontrado!")
-                            
-                            for j in range(i+1, min(i+5, len(all_tds))):
-                                next_td = all_tds[j]
-                                next_text = next_td.get_text()
-                                
-                                if 'Compra' in next_text and 'Venta' in next_text:
-                                    numeros = re.findall(r'([0-9]+\.[0-9]+)', next_text)
-                                    
-                                    if len(numeros) >= 2:
-                                        compra = float(numeros[0])
-                                        venta = float(numeros[1])
-                                        
-                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                            print(f"SUNAT encontrado: Compra={compra}, Venta={venta}")
-                                            return {
-                                                "compra": compra,
-                                                "venta": venta,
-                                                "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
-                                                "fuente": "scraperapi"
-                                            }
-                    
-                    print("Buscando valores por patron...")
+                    # Buscar cualquier valor que parezca tipo de cambio
                     valores = re.findall(r'3\.\d{3}', html)
                     
                     if valores:
-                        print(f"Valores encontrados: {valores[:10]}")
+                        print(f"Valores encontrados: {valores[:20]}")
+                        
                         valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
                         valores_unicos = list(dict.fromkeys(valores_float))
                         
-                        if valores_unicos:
-                            if len(valores_unicos) >= 2:
-                                compra = min(valores_unicos[0], valores_unicos[1])
-                                venta = max(valores_unicos[0], valores_unicos[1])
-                            else:
-                                compra = venta = valores_unicos[0]
+                        if len(valores_unicos) >= 2:
+                            compra = valores_unicos[0]
+                            venta = valores_unicos[1]
                             
-                            print(f"SUNAT por patron: {compra}/{venta}")
+                            print(f"SUNAT extraido: {compra}/{venta}")
+                            
                             return {
                                 "compra": compra,
                                 "venta": venta,
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_pattern"
+                                "fuente": "scraperapi"
                             }
-                    
-                    print("No se encontraron valores validos")
+                        elif len(valores_unicos) == 1:
+                            val = valores_unicos[0]
+                            print(f"SUNAT un solo valor: {val}")
+                            return {
+                                "compra": val,
+                                "venta": val,
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "scraperapi_single"
+                            }
+                    else:
+                        print("No se encontraron valores numericos")
+                        
                 else:
-                    print(f"Error: Status {response.status_code}")
+                    print(f"Error HTTP: {response.status_code}")
+                    print(f"Respuesta: {response.text[:500]}")
                     
+            except requests.exceptions.Timeout:
+                print("Timeout en ScraperAPI")
             except Exception as e:
                 print(f"Error con ScraperAPI: {e}")
                 import traceback
