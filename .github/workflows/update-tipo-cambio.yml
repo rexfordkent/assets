@@ -62,44 +62,24 @@ jobs:
                     dia = datetime.now().day
                     print(f"Buscando dia {dia} en el calendario...")
                     
-                    # Buscar todas las celdas TD
+                    # Metodo 1: Buscar en tabla con estructura calendario
                     all_tds = soup.find_all('td')
                     
                     for i, td in enumerate(all_tds):
                         td_text = td.get_text(strip=True)
                         
-                        # Si encontramos el dia exacto (solo el número)
+                        # Si encontramos el dia
                         if td_text == str(dia):
-                            print(f"Dia {dia} encontrado en posición {i}!")
+                            print(f"Dia {dia} encontrado!")
                             
-                            # El día 15 debe tener Compra 3.555 y Venta 3.555
-                            # Buscar en el mismo TD o en los siguientes
-                            td_html = str(td)
-                            
-                            # Primero buscar dentro del mismo TD
-                            if 'Compra' in td_html and 'Venta' in td_html:
-                                valores = re.findall(r'(\d+\.\d{3})', td_html)
-                                if len(valores) >= 2:
-                                    compra = float(valores[0])
-                                    venta = float(valores[1])
-                                    
-                                    if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                        print(f"SUNAT encontrado en mismo TD: Compra={compra}, Venta={venta}")
-                                        return {
-                                            "compra": compra,
-                                            "venta": venta,
-                                            "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
-                                            "fuente": "scraperapi"
-                                        }
-                            
-                            # Si no está en el mismo TD, buscar en los siguientes
-                            for j in range(i+1, min(i+10, len(all_tds))):
+                            # Buscar valores en las siguientes celdas
+                            for j in range(i+1, min(i+5, len(all_tds))):
                                 next_td = all_tds[j]
                                 next_text = next_td.get_text()
                                 
                                 # Buscar Compra y Venta
                                 if 'Compra' in next_text and 'Venta' in next_text:
-                                    numeros = re.findall(r'(\d+\.\d{3})', next_text)
+                                    numeros = re.findall(r'([0-9]+\.[0-9]+)', next_text)
                                     
                                     if len(numeros) >= 2:
                                         compra = float(numeros[0])
@@ -113,9 +93,32 @@ jobs:
                                                 "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
                                                 "fuente": "scraperapi"
                                             }
-                                    break  # Solo revisar el primer TD con Compra/Venta después del día
                     
-                    print("No se encontraron valores para el día actual")
+                    # Metodo 2: Buscar cualquier valor 3.XXX en el HTML
+                    print("Buscando valores por patron...")
+                    valores = re.findall(r'3\.\d{3}', html)
+                    
+                    if valores:
+                        print(f"Valores encontrados: {valores[:10]}")
+                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                        valores_unicos = list(dict.fromkeys(valores_float))
+                        
+                        if valores_unicos:
+                            if len(valores_unicos) >= 2:
+                                compra = min(valores_unicos[0], valores_unicos[1])
+                                venta = max(valores_unicos[0], valores_unicos[1])
+                            else:
+                                compra = venta = valores_unicos[0]
+                            
+                            print(f"SUNAT por patron: {compra}/{venta}")
+                            return {
+                                "compra": compra,
+                                "venta": venta,
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "scraperapi_pattern"
+                            }
+                    
+                    print("No se encontraron valores validos")
                 else:
                     print(f"Error: Status {response.status_code}")
                     
