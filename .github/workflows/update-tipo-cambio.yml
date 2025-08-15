@@ -38,129 +38,86 @@ jobs:
         urllib3.disable_warnings()
         
         def get_sunat_scraperapi():
-            """Obtener SUNAT usando ScraperAPI - Directo al endpoint de datos"""
+            """Obtener SUNAT usando ScraperAPI"""
             try:
                 print("Obteniendo SUNAT via ScraperAPI...")
                 
                 api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
-                
-                # Primero intentar el endpoint directo de AJAX
-                mes = datetime.now().month
-                anio = datetime.now().year
-                target_url = f"https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/listarTipoCambio?mes={mes}&anho={anio}"
-                
-                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}&render=true"
-                
-                print(f"Intentando endpoint AJAX: {target_url}")
-                
-                try:
-                    response = requests.get(scraper_url, timeout=40)
-                    
-                    if response.status_code == 200:
-                        # Intentar parsear como JSON
-                        try:
-                            data = response.json()
-                            print(f"Respuesta JSON recibida: {len(str(data))} caracteres")
-                            
-                            # Buscar el día actual en los datos
-                            dia_actual = datetime.now().day
-                            
-                            for item in data:
-                                if 'dia' in item and item['dia'] == dia_actual:
-                                    compra = float(item.get('compra', 0))
-                                    venta = float(item.get('venta', 0))
-                                    
-                                    if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                        print(f"SUNAT JSON encontrado: {compra}/{venta}")
-                                        return {
-                                            "compra": compra,
-                                            "venta": venta,
-                                            "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                            "fuente": "scraperapi_ajax"
-                                        }
-                        except:
-                            pass
-                
-                except:
-                    pass
-                
-                # Si falla el AJAX, intentar la página principal con render
-                print("Intentando página principal con render...")
                 target_url = "https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias"
-                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}&render=true"
                 
-                response = requests.get(scraper_url, timeout=50)
+                # ScraperAPI endpoint
+                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
+                
+                print(f"Consultando ScraperAPI...")
+                response = requests.get(scraper_url, timeout=30)
                 
                 print(f"Status: {response.status_code}")
-                print(f"Content length: {len(response.text) if response.text else 0}")
+                print(f"Content length: {len(response.text)}")
                 
-                if response.status_code == 200:
+                if response.status_code == 200 and len(response.text) > 1000:
                     html = response.text
-                    
-                    # Buscar el día actual
-                    dia = datetime.now().day
                     soup = BeautifulSoup(html, 'html.parser')
                     
-                    # Buscar en toda la tabla
+                    # Buscar el dia actual
+                    dia = datetime.now().day
+                    print(f"Buscando dia {dia} en el calendario...")
+                    
+                    # Buscar todas las celdas TD
                     all_tds = soup.find_all('td')
                     
                     for i, td in enumerate(all_tds):
                         td_text = td.get_text(strip=True)
                         
+                        # Si encontramos el dia exacto (solo el número)
                         if td_text == str(dia):
-                            print(f"Día {dia} encontrado!")
+                            print(f"Dia {dia} encontrado en posición {i}!")
                             
-                            # Buscar en las siguientes celdas
-                            for j in range(i+1, min(i+5, len(all_tds))):
-                                next_text = all_tds[j].get_text()
-                                
-                                # Buscar patrones de compra/venta
-                                valores = re.findall(r'(\d+\.\d{3})', next_text)
-                                
+                            # El día 15 debe tener Compra 3.555 y Venta 3.555
+                            # Buscar en el mismo TD o en los siguientes
+                            td_html = str(td)
+                            
+                            # Primero buscar dentro del mismo TD
+                            if 'Compra' in td_html and 'Venta' in td_html:
+                                valores = re.findall(r'(\d+\.\d{3})', td_html)
                                 if len(valores) >= 2:
                                     compra = float(valores[0])
                                     venta = float(valores[1])
                                     
                                     if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                        print(f"SUNAT tabla encontrado: {compra}/{venta}")
+                                        print(f"SUNAT encontrado en mismo TD: Compra={compra}, Venta={venta}")
                                         return {
                                             "compra": compra,
                                             "venta": venta,
                                             "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
-                                            "fuente": "scraperapi_render"
+                                            "fuente": "scraperapi"
                                         }
-                    
-                    # Método fallback: buscar cualquier valor 3.XXX
-                    print("Buscando valores por patrón...")
-                    valores = re.findall(r'3\.\d{3}', html)
-                    
-                    if valores:
-                        print(f"Valores encontrados: {valores[:20]}")
-                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
-                        valores_unicos = list(dict.fromkeys(valores_float))
-                        
-                        if len(valores_unicos) >= 2:
-                            compra = valores_unicos[0]
-                            venta = valores_unicos[1]
                             
-                            print(f"SUNAT patrón: {compra}/{venta}")
-                            return {
-                                "compra": compra,
-                                "venta": venta,
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_pattern"
-                            }
-                        elif len(valores_unicos) == 1:
-                            val = valores_unicos[0]
-                            print(f"SUNAT un valor: {val}")
-                            return {
-                                "compra": val,
-                                "venta": val,
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_single"
-                            }
+                            # Si no está en el mismo TD, buscar en los siguientes
+                            for j in range(i+1, min(i+10, len(all_tds))):
+                                next_td = all_tds[j]
+                                next_text = next_td.get_text()
+                                
+                                # Buscar Compra y Venta
+                                if 'Compra' in next_text and 'Venta' in next_text:
+                                    numeros = re.findall(r'(\d+\.\d{3})', next_text)
+                                    
+                                    if len(numeros) >= 2:
+                                        compra = float(numeros[0])
+                                        venta = float(numeros[1])
+                                        
+                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                            print(f"SUNAT encontrado: Compra={compra}, Venta={venta}")
+                                            return {
+                                                "compra": compra,
+                                                "venta": venta,
+                                                "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
+                                                "fuente": "scraperapi"
+                                            }
+                                    break  # Solo revisar el primer TD con Compra/Venta después del día
                     
-                    print("No se encontraron valores válidos")
+                    print("No se encontraron valores para el día actual")
+                else:
+                    print(f"Error: Status {response.status_code}")
                     
             except Exception as e:
                 print(f"Error con ScraperAPI: {e}")
