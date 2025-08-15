@@ -76,25 +76,57 @@ jobs:
                 
                 if response.status_code == 200:
                     html = response.text
+                    soup = BeautifulSoup(html, 'html.parser')
                     
-                    # Buscar valores 3.XXX
+                    # Buscar la tabla específica del dólar
+                    tables = soup.find_all('table')
+                    
+                    for table in tables:
+                        rows = table.find_all('tr')
+                        for row in rows:
+                            celdas = row.find_all('td')
+                            if len(celdas) >= 3:
+                                texto = celdas[0].get_text(strip=True)
+                                
+                                # Buscar específicamente "Dólar de N.A."
+                                if 'lar de N.A.' in texto or 'Dólar de N.A.' in texto:
+                                    try:
+                                        compra_text = celdas[1].get_text(strip=True)
+                                        venta_text = celdas[2].get_text(strip=True)
+                                        
+                                        compra = float(compra_text)
+                                        venta = float(venta_text)
+                                        
+                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                            print(f"SBS tabla: Compra={compra}, Venta={venta}")
+                                            return {
+                                                "compra": compra,
+                                                "venta": venta,
+                                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                                "fuente": "direct"
+                                            }
+                                    except:
+                                        pass
+                    
+                    # Si no encuentra en tabla, buscar valores 3.XXX
                     valores = re.findall(r'3\.\d{3}', html)
                     
                     if valores:
-                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
-                        valores_unicos = list(dict.fromkeys(valores_float))
+                        # Para SBS, normalmente compra y venta son iguales
+                        # Buscar el valor más frecuente
+                        from collections import Counter
+                        contador = Counter(valores)
+                        valor_mas_comun = contador.most_common(1)[0][0]
                         
-                        if valores_unicos:
-                            compra = valores_unicos[0] if len(valores_unicos) > 0 else 0
-                            venta = valores_unicos[1] if len(valores_unicos) > 1 else compra
-                            
-                            print(f"SBS: {compra}/{venta}")
-                            return {
-                                "compra": compra,
-                                "venta": venta,
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "direct"
-                            }
+                        compra = venta = float(valor_mas_comun)
+                        
+                        print(f"SBS patrón: {compra}/{venta}")
+                        return {
+                            "compra": compra,
+                            "venta": venta,
+                            "fecha": datetime.now().strftime("%d/%m/%Y"),
+                            "fuente": "direct"
+                        }
                         
             except Exception as e:
                 print(f"Error SBS: {e}")
