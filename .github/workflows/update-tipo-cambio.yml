@@ -38,73 +38,90 @@ jobs:
         urllib3.disable_warnings()
         
         def get_sunat_scraperapi():
-            """Obtener SUNAT usando ScraperAPI - SIN HARDCODEO"""
+            """Obtener SUNAT usando ScraperAPI"""
             try:
                 print("Obteniendo SUNAT via ScraperAPI...")
                 
                 api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
                 target_url = "https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias"
                 
+                # ScraperAPI endpoint
                 scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
                 
-                print(f"URL completa: {scraper_url}")
-                
-                response = requests.get(scraper_url, timeout=40)
+                print(f"Consultando ScraperAPI...")
+                response = requests.get(scraper_url, timeout=30)
                 
                 print(f"Status: {response.status_code}")
-                print(f"Headers: {response.headers}")
-                print(f"Content length: {len(response.text) if response.text else 0}")
+                print(f"Content length: {len(response.text)}")
                 
-                if response.status_code == 403:
-                    print("ERROR 403: API key invalida o sin creditos")
-                    return {"error": True, "message": "ScraperAPI sin creditos"}
-                
-                if response.status_code == 200:
+                if response.status_code == 200 and len(response.text) > 1000:
                     html = response.text
+                    soup = BeautifulSoup(html, 'html.parser')
                     
-                    if len(html) < 100:
-                        print(f"Respuesta muy corta: {html[:100]}")
-                        return {"error": True, "message": "Respuesta invalida de ScraperAPI"}
+                    # Buscar el dia actual
+                    dia = datetime.now().day
+                    print(f"Buscando dia {dia} en el calendario...")
                     
-                    # Buscar cualquier valor que parezca tipo de cambio
+                    # Metodo 1: Buscar en tabla con estructura calendario
+                    all_tds = soup.find_all('td')
+                    
+                    for i, td in enumerate(all_tds):
+                        td_text = td.get_text(strip=True)
+                        
+                        # Si encontramos el dia
+                        if td_text == str(dia):
+                            print(f"Dia {dia} encontrado!")
+                            
+                            # Buscar valores en las siguientes celdas
+                            for j in range(i+1, min(i+5, len(all_tds))):
+                                next_td = all_tds[j]
+                                next_text = next_td.get_text()
+                                
+                                # Buscar Compra y Venta
+                                if 'Compra' in next_text and 'Venta' in next_text:
+                                    numeros = re.findall(r'([0-9]+\.[0-9]+)', next_text)
+                                    
+                                    if len(numeros) >= 2:
+                                        compra = float(numeros[0])
+                                        venta = float(numeros[1])
+                                        
+                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                            print(f"SUNAT encontrado: Compra={compra}, Venta={venta}")
+                                            return {
+                                                "compra": compra,
+                                                "venta": venta,
+                                                "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
+                                                "fuente": "scraperapi"
+                                            }
+                    
+                    # Metodo 2: Buscar cualquier valor 3.XXX en el HTML
+                    print("Buscando valores por patron...")
                     valores = re.findall(r'3\.\d{3}', html)
                     
                     if valores:
-                        print(f"Valores encontrados: {valores[:20]}")
-                        
+                        print(f"Valores encontrados: {valores[:10]}")
                         valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
                         valores_unicos = list(dict.fromkeys(valores_float))
                         
-                        if len(valores_unicos) >= 2:
-                            compra = valores_unicos[0]
-                            venta = valores_unicos[1]
+                        if valores_unicos:
+                            if len(valores_unicos) >= 2:
+                                compra = min(valores_unicos[0], valores_unicos[1])
+                                venta = max(valores_unicos[0], valores_unicos[1])
+                            else:
+                                compra = venta = valores_unicos[0]
                             
-                            print(f"SUNAT extraido: {compra}/{venta}")
-                            
+                            print(f"SUNAT por patron: {compra}/{venta}")
                             return {
                                 "compra": compra,
                                 "venta": venta,
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi"
+                                "fuente": "scraperapi_pattern"
                             }
-                        elif len(valores_unicos) == 1:
-                            val = valores_unicos[0]
-                            print(f"SUNAT un solo valor: {val}")
-                            return {
-                                "compra": val,
-                                "venta": val,
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_single"
-                            }
-                    else:
-                        print("No se encontraron valores numericos")
-                        
-                else:
-                    print(f"Error HTTP: {response.status_code}")
-                    print(f"Respuesta: {response.text[:500]}")
                     
-            except requests.exceptions.Timeout:
-                print("Timeout en ScraperAPI")
+                    print("No se encontraron valores validos")
+                else:
+                    print(f"Error: Status {response.status_code}")
+                    
             except Exception as e:
                 print(f"Error con ScraperAPI: {e}")
                 import traceback
@@ -113,11 +130,76 @@ jobs:
             return {"error": True, "message": "No se pudo obtener de SUNAT"}
         
         def get_sbs_scraperapi():
-            """Obtener SBS - CORREGIDO PARA DAR 3.555/3.555"""
+            """Obtener SBS usando ScraperAPI"""
             try:
-                print("\nObteniendo SBS...")
+                print("\nObteniendo SBS via ScraperAPI...")
                 
-                # PRIMERO intentar directo sin ScraperAPI (más rápido)
+                api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
+                target_url = "https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx"
+                
+                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
+                
+                response = requests.get(scraper_url, timeout=30)
+                
+                print(f"SBS Status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    html = response.text
+                    soup = BeautifulSoup(html, 'html.parser')
+                    
+                    # Buscar tabla con Dolar de N.A.
+                    tables = soup.find_all('table')
+                    
+                    for table in tables:
+                        rows = table.find_all('tr')
+                        for row in rows:
+                            row_text = row.get_text()
+                            if 'lar de N.A.' in row_text or 'Dólar de N.A.' in row_text:
+                                tds = row.find_all('td')
+                                if len(tds) >= 3:
+                                    try:
+                                        compra = float(tds[1].get_text(strip=True))
+                                        venta = float(tds[2].get_text(strip=True))
+                                        
+                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                            print(f"SBS tabla encontrado: {compra}/{venta}")
+                                            return {
+                                                "compra": compra,
+                                                "venta": venta,
+                                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                                "fuente": "scraperapi"
+                                            }
+                                    except:
+                                        pass
+                    
+                    # Buscar por patron
+                    valores = re.findall(r'3\.\d{3}', html)
+                    if valores:
+                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                        valores_unicos = list(dict.fromkeys(valores_float))
+                        
+                        if len(valores_unicos) >= 2:
+                            print(f"SBS patron: {valores_unicos[0]}/{valores_unicos[1]}")
+                            return {
+                                "compra": valores_unicos[0],
+                                "venta": valores_unicos[1],
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "scraperapi_pattern"
+                            }
+                        elif len(valores_unicos) == 1:
+                            return {
+                                "compra": valores_unicos[0],
+                                "venta": valores_unicos[0],
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "scraperapi_pattern"
+                            }
+                    
+            except Exception as e:
+                print(f"Error SBS: {e}")
+            
+            # Si ScraperAPI falla, intentar directo (SBS no bloquea tanto)
+            try:
+                print("Intentando SBS directo...")
                 response = requests.get(
                     'https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx',
                     headers={'User-Agent': 'Mozilla/5.0'},
@@ -126,76 +208,21 @@ jobs:
                 )
                 
                 if response.status_code == 200:
-                    html = response.text
-                    
-                    # Buscar específicamente 3.555
-                    count_3555 = html.count('3.555')
-                    print(f"3.555 aparece {count_3555} veces en SBS")
-                    
-                    # Si aparece al menos 2 veces, es el valor correcto
-                    if count_3555 >= 2:
-                        print("SBS: Confirmado 3.555/3.555")
-                        return {
-                            "compra": 3.555,
-                            "venta": 3.555,
-                            "fecha": "14/08/2025",
-                            "fuente": "direct_verified"
-                        }
-                    
-                    # Si no, buscar en la tabla específica con ScraperAPI
-                    print("Intentando SBS con ScraperAPI para mejor parsing...")
-                    
-                    api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
-                    target_url = "https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx"
-                    scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
-                    
-                    response2 = requests.get(scraper_url, timeout=30)
-                    
-                    if response2.status_code == 200:
-                        html2 = response2.text
-                        soup = BeautifulSoup(html2, 'html.parser')
+                    valores = re.findall(r'3\.\d{3}', response.text)
+                    if valores:
+                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                        valores_unicos = list(dict.fromkeys(valores_float))
                         
-                        # Buscar tabla del dólar
-                        tables = soup.find_all('table')
-                        
-                        for table in tables:
-                            rows = table.find_all('tr')
-                            for row in rows:
-                                celdas = row.find_all('td')
-                                if len(celdas) >= 3:
-                                    texto = celdas[0].get_text(strip=True)
-                                    
-                                    if 'lar de N.A.' in texto:
-                                        try:
-                                            compra = float(celdas[1].get_text(strip=True))
-                                            venta = float(celdas[2].get_text(strip=True))
-                                            
-                                            # Verificar que sean valores correctos
-                                            if compra == 3.555 and venta == 3.555:
-                                                print(f"SBS via ScraperAPI: {compra}/{venta}")
-                                                return {
-                                                    "compra": compra,
-                                                    "venta": venta,
-                                                    "fecha": "14/08/2025",
-                                                    "fuente": "scraperapi"
-                                                }
-                                        except:
-                                            pass
-                        
-                        # Si aún no encuentra, buscar cualquier 3.555
-                        if '3.555' in html2:
-                            print("SBS: Forzando 3.555/3.555 basado en contenido")
+                        if valores_unicos:
                             return {
-                                "compra": 3.555,
-                                "venta": 3.555,
-                                "fecha": "14/08/2025",
-                                "fuente": "scraperapi_forced"
+                                "compra": valores_unicos[0],
+                                "venta": valores_unicos[1] if len(valores_unicos) > 1 else valores_unicos[0],
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "direct"
                             }
-                    
-            except Exception as e:
-                print(f"Error SBS: {e}")
+            except:
+                pass
             
-            # Si todo falla, devolver error
             return {"error": True, "message": "No se pudo obtener de SBS"}
         
         # Ejecutar
@@ -205,6 +232,16 @@ jobs:
         
         sunat_data = get_sunat_scraperapi()
         sbs_data = get_sbs_scraperapi()
+        
+        # Si SUNAT falla, usar valores de SBS
+        if sunat_data.get('error') and not sbs_data.get('error'):
+            print("\nSUNAT fallo, usando valores de SBS para ambos")
+            sunat_data = {
+                "compra": sbs_data['compra'],
+                "venta": sbs_data['venta'],
+                "fecha": sbs_data['fecha'],
+                "fuente": "sbs_mirror"
+            }
         
         result = {
             "sunat": sunat_data,
@@ -221,6 +258,7 @@ jobs:
         print(f"SBS: {sbs_data}")
         print("=" * 60)
         
+        # Mostrar creditos restantes de ScraperAPI
         try:
             account_url = f"http://api.scraperapi.com/account?api_key=a1057c3f6bbe27d6b7c97efa9f6f6f0a"
             account_response = requests.get(account_url, timeout=5)
