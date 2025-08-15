@@ -24,9 +24,9 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install requests beautifulsoup4 selenium webdriver-manager
+        pip install requests beautifulsoup4
     
-    - name: Scraping REAL sin hardcodeo
+    - name: Scraping con endpoints correctos
       run: |
         cat > scraper.py << 'ENDOFSCRIPT'
         import requests
@@ -39,90 +39,176 @@ jobs:
         
         def get_sunat():
             try:
-                print("Intentando obtener SUNAT...")
-                headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'es-PE,es;q=0.9',
-                    'Connection': 'keep-alive',
-                    'Referer': 'https://www.sunat.gob.pe/'
-                }
+                print("Obteniendo SUNAT...")
                 
+                # Crear sesion para mantener cookies
                 session = requests.Session()
-                response = session.get(
+                session.headers.update({
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'Accept-Language': 'es-PE,es;q=0.9',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Referer': 'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias'
+                })
+                
+                # Primero obtener la pagina principal para cookies
+                main_response = session.get(
                     'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias',
-                    headers=headers,
                     verify=False,
-                    timeout=30,
-                    allow_redirects=True
+                    timeout=30
                 )
+                print(f"Main page status: {main_response.status_code}")
                 
-                print(f"SUNAT Status: {response.status_code}")
-                print(f"SUNAT Content Length: {len(response.text)}")
+                # Intentar el endpoint AJAX que descubriste
+                mes = datetime.now().month
+                anio = datetime.now().year
                 
-                if response.status_code == 200 and len(response.text) > 1000:
-                    html = response.text
+                # Probar diferentes endpoints
+                endpoints = [
+                    f'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/listarTipoCambio?mes={mes}&anho={anio}',
+                    'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/listarTipoCambio',
+                    f'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias?mes={mes:02d}&anho={anio}',
+                    'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias'
+                ]
+                
+                for endpoint in endpoints:
+                    print(f"Probando: {endpoint}")
                     
-                    # Buscar TODOS los valores numericos que parezcan tipo de cambio
-                    pattern = r'3\.\d{3}'
-                    all_values = re.findall(pattern, html)
-                    
-                    if all_values:
-                        print(f"Valores encontrados en SUNAT: {all_values[:10]}")
+                    try:
+                        response = session.get(endpoint, verify=False, timeout=15)
                         
-                        # Filtrar valores validos
-                        valid_values = []
-                        for val in all_values:
-                            num = float(val)
-                            if 3.4 <= num <= 3.8:
-                                valid_values.append(num)
-                        
-                        if len(valid_values) >= 2:
-                            # Tomar los primeros dos valores unicos
-                            unique_values = list(dict.fromkeys(valid_values))
+                        if response.status_code == 200:
+                            content = response.text
                             
-                            if len(unique_values) >= 2:
-                                compra = min(unique_values[0], unique_values[1])
-                                venta = max(unique_values[0], unique_values[1])
-                            else:
-                                compra = venta = unique_values[0]
+                            # Si es JSON
+                            try:
+                                data = json.loads(content)
+                                print(f"JSON recibido: {data}")
+                                
+                                # Buscar valores en el JSON
+                                if isinstance(data, list):
+                                    for item in data:
+                                        if 'compra' in item and 'venta' in item:
+                                            return {
+                                                "compra": float(item['compra']),
+                                                "venta": float(item['venta']),
+                                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                                "fuente": "ajax_endpoint"
+                                            }
+                            except:
+                                pass
                             
-                            print(f"SUNAT REAL: Compra={compra}, Venta={venta}")
-                            
-                            return {
-                                "compra": compra,
-                                "venta": venta,
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "web_scraping"
-                            }
-                        elif len(valid_values) == 1:
-                            val = valid_values[0]
-                            print(f"SUNAT un solo valor: {val}")
-                            return {
-                                "compra": val,
-                                "venta": val,
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "web_scraping"
-                            }
+                            # Si es HTML, buscar el calendario
+                            if '<' in content:
+                                soup = BeautifulSoup(content, 'html.parser')
+                                
+                                # Buscar el dia actual en el calendario
+                                dia = datetime.now().day
+                                
+                                # Buscar por clase calendario-dia-tc
+                                dias_tc = soup.find_all(class_='calendario-dia-tc')
+                                for dia_tc in dias_tc:
+                                    if str(dia) in dia_tc.get_text():
+                                        # Buscar valores de compra y venta
+                                        parent = dia_tc.parent
+                                        text = parent.get_text()
+                                        
+                                        compra_match = re.search(r'Compra\s*([0-9]+\.[0-9]+)', text)
+                                        venta_match = re.search(r'Venta\s*([0-9]+\.[0-9]+)', text)
+                                        
+                                        if compra_match and venta_match:
+                                            print(f"SUNAT calendario encontrado: {compra_match.group(1)}/{venta_match.group(1)}")
+                                            return {
+                                                "compra": float(compra_match.group(1)),
+                                                "venta": float(venta_match.group(1)),
+                                                "fecha": f"{dia:02d}/{mes:02d}/{anio}",
+                                                "fuente": "calendario_html"
+                                            }
+                                
+                                # Buscar tabla con clase form-table
+                                tabla = soup.find('table', class_='form-table')
+                                if tabla:
+                                    filas = tabla.find_all('tr')
+                                    for fila in filas:
+                                        celdas = fila.find_all('td')
+                                        for i, celda in enumerate(celdas):
+                                            if str(dia) in celda.get_text():
+                                                # La siguiente celda tiene los valores
+                                                if i + 1 < len(celdas):
+                                                    valores_text = celdas[i + 1].get_text()
+                                                    numeros = re.findall(r'([0-9]+\.[0-9]+)', valores_text)
+                                                    
+                                                    if len(numeros) >= 2:
+                                                        print(f"SUNAT tabla encontrado: {numeros[0]}/{numeros[1]}")
+                                                        return {
+                                                            "compra": float(numeros[0]),
+                                                            "venta": float(numeros[1]),
+                                                            "fecha": f"{dia:02d}/{mes:02d}/{anio}",
+                                                            "fuente": "tabla_html"
+                                                        }
+                                
+                                # Buscar cualquier valor 3.XXX en el HTML
+                                valores = re.findall(r'3\.\d{3}', content)
+                                if valores:
+                                    valores_unicos = list(dict.fromkeys(valores))
+                                    valores_float = [float(v) for v in valores_unicos if 3.4 <= float(v) <= 3.8]
+                                    
+                                    if valores_float:
+                                        if len(valores_float) >= 2:
+                                            compra = min(valores_float[0], valores_float[1])
+                                            venta = max(valores_float[0], valores_float[1])
+                                        else:
+                                            compra = venta = valores_float[0]
+                                        
+                                        print(f"SUNAT valores encontrados: {compra}/{venta}")
+                                        return {
+                                            "compra": compra,
+                                            "venta": venta,
+                                            "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                            "fuente": "regex_html"
+                                        }
                     
-                    print("No se encontraron valores validos en SUNAT")
-                else:
-                    print(f"Error: respuesta invalida de SUNAT")
+                    except Exception as e:
+                        print(f"Error en endpoint {endpoint}: {e}")
+                        continue
+                
+                # Si nada funciono, intentar el PDF
+                try:
+                    print("Intentando obtener del PDF...")
+                    pdf_url = 'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/generarPdf'
+                    pdf_response = session.get(pdf_url, verify=False, timeout=15)
+                    
+                    if pdf_response.status_code == 200:
+                        # El PDF puede tener los datos en texto
+                        pdf_text = str(pdf_response.content)
+                        valores = re.findall(r'3\.\d{3}', pdf_text)
+                        
+                        if valores:
+                            print(f"Valores del PDF: {valores}")
+                            valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                            
+                            if valores_float:
+                                return {
+                                    "compra": valores_float[0],
+                                    "venta": valores_float[1] if len(valores_float) > 1 else valores_float[0],
+                                    "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                    "fuente": "pdf"
+                                }
+                except:
+                    pass
                     
             except Exception as e:
-                print(f"Error SUNAT: {e}")
+                print(f"Error general SUNAT: {e}")
                 import traceback
                 traceback.print_exc()
             
-            # NO HARDCODEAR - devolver error si no se puede obtener
             return {"error": True, "message": "No se pudo obtener de SUNAT"}
         
         def get_sbs():
             try:
-                print("Intentando obtener SBS...")
+                print("Obteniendo SBS...")
                 headers = {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
                 
                 response = requests.get(
@@ -132,81 +218,45 @@ jobs:
                     timeout=30
                 )
                 
-                print(f"SBS Status: {response.status_code}")
-                
                 if response.status_code == 200:
                     html = response.text
-                    soup = BeautifulSoup(html, 'html.parser')
                     
-                    # Buscar tabla con Dolar
-                    tables = soup.find_all('table')
+                    # Buscar valores 3.XXX
+                    valores = re.findall(r'3\.\d{3}', html)
                     
-                    for table in tables:
-                        text = table.get_text()
-                        if 'lar de N.A.' in text or 'Dolar' in text or 'DOLAR' in text:
-                            # Extraer todos los numeros de la tabla
-                            numeros = re.findall(r'3\.\d{3}', text)
-                            
-                            if numeros:
-                                print(f"SBS numeros encontrados: {numeros}")
-                                
-                                valores = [float(n) for n in numeros if 3.4 <= float(n) <= 3.8]
-                                
-                                if len(valores) >= 2:
-                                    compra = valores[0]
-                                    venta = valores[1]
-                                    
-                                    print(f"SBS REAL: Compra={compra}, Venta={venta}")
-                                    
-                                    return {
-                                        "compra": compra,
-                                        "venta": venta,
-                                        "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                        "fuente": "web_scraping"
-                                    }
-                                elif len(valores) == 1:
-                                    val = valores[0]
-                                    print(f"SBS un valor: {val}")
-                                    return {
-                                        "compra": val,
-                                        "venta": val,
-                                        "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                        "fuente": "web_scraping"
-                                    }
-                    
-                    # Si no encuentra en tablas, buscar en todo el HTML
-                    all_values = re.findall(r'3\.\d{3}', html)
-                    if all_values:
-                        valores = [float(n) for n in all_values if 3.4 <= float(n) <= 3.8]
-                        valores = list(dict.fromkeys(valores))  # Unicos
+                    if valores:
+                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                        valores_unicos = list(dict.fromkeys(valores_float))
                         
-                        if len(valores) >= 2:
-                            print(f"SBS valores del HTML: {valores[0]}/{valores[1]}")
+                        if len(valores_unicos) >= 2:
+                            print(f"SBS encontrado: {valores_unicos[0]}/{valores_unicos[1]}")
                             return {
-                                "compra": valores[0],
-                                "venta": valores[1],
+                                "compra": valores_unicos[0],
+                                "venta": valores_unicos[1],
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "web_scraping"
+                            }
+                        elif len(valores_unicos) == 1:
+                            val = valores_unicos[0]
+                            print(f"SBS un valor: {val}")
+                            return {
+                                "compra": val,
+                                "venta": val,
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
                                 "fuente": "web_scraping"
                             }
                     
-                    print("SBS: No se encontraron valores")
-                    
             except Exception as e:
                 print(f"Error SBS: {e}")
-                import traceback
-                traceback.print_exc()
             
-            # NO HARDCODEAR - devolver error si no se puede obtener
             return {"error": True, "message": "No se pudo obtener de SBS"}
         
         print("=" * 60)
-        print("SCRAPING SIN VALORES HARDCODEADOS")
+        print("INICIANDO SCRAPING CON ENDPOINTS CORRECTOS")
         print("=" * 60)
         
         sunat_data = get_sunat()
         sbs_data = get_sbs()
-        
-        # NO HARDCODEAR NADA - si falla, que muestre error
         
         result = {
             "sunat": sunat_data,
@@ -214,34 +264,25 @@ jobs:
             "ultima_actualizacion": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         
-        # Guardar JSON
         with open('tipo-cambio.json', 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
         
         print("\n" + "=" * 60)
-        print("RESULTADO FINAL SIN HARDCODEO:")
+        print("RESULTADO:")
         print(f"SUNAT: {sunat_data}")
         print(f"SBS: {sbs_data}")
         print("=" * 60)
-        
-        # Verificar si al menos uno tiene datos
-        if sunat_data.get('error') and sbs_data.get('error'):
-            print("WARNING: Ninguna fuente pudo ser obtenida")
-        else:
-            print("OK: Al menos una fuente fue obtenida")
         ENDOFSCRIPT
         
         python scraper.py
     
-    - name: Mostrar JSON final
-      run: |
-        echo "===== JSON FINAL ====="
-        cat tipo-cambio.json
+    - name: Mostrar JSON
+      run: cat tipo-cambio.json
     
-    - name: Commit y Push
+    - name: Commit
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add tipo-cambio.json
-        git commit -m "TC Real sin hardcodeo - $(date +'%d/%m/%Y %H:%M')" || echo "No changes"
+        git commit -m "TC - $(date +'%d/%m/%Y %H:%M')" || echo "No changes"
         git push || echo "Nothing to push"
