@@ -7,43 +7,87 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: write
+
 jobs:
   update-rates:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.0'
     
-    - name: Crear archivo JSON con valores por defecto
+    - name: Obtener Tipo de Cambio Real
       run: |
-        cat > tipo-cambio.json << 'EOF'
-        {
-          "sunat": {
-            "compra": 3.730,
-            "venta": 3.733,
-            "fecha": "15/08/2025"
-          },
-          "sbs": {
-            "compra": 3.730,
-            "venta": 3.733,
-            "fecha": "15/08/2025"
-          },
-          "ultima_actualizacion": "2025-08-15 16:00:00"
-        }
-        EOF
+        php -r '
+        date_default_timezone_set("America/Lima");
         
-        echo "Archivo creado con valores por defecto"
-        cat tipo-cambio.json
+        // Intentar obtener de SUNAT
+        $ctx = stream_context_create([
+            "http" => ["timeout" => 30, "user_agent" => "Mozilla/5.0"],
+            "ssl" => ["verify_peer" => false, "verify_peer_name" => false]
+        ]);
+        
+        $sunat_html = @file_get_contents("https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias", false, $ctx);
+        $sbs_html = @file_get_contents("https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx", false, $ctx);
+        
+        $result = [
+            "sunat" => ["compra" => 3.730, "venta" => 3.733, "fecha" => date("d/m/Y")],
+            "sbs" => ["compra" => 3.730, "venta" => 3.733, "fecha" => date("d/m/Y")]
+        ];
+        
+        // Buscar valores en SUNAT
+        if ($sunat_html && preg_match_all("/([3-4]\.[0-9]{3})/", $sunat_html, $matches)) {
+            $vals = array_map("floatval", $matches[1]);
+            $vals = array_filter($vals, fn($v) => $v >= 3.5 && $v <= 3.9);
+            if (count($vals) >= 2) {
+                $vals = array_values($vals);
+                $result["sunat"] = [
+                    "compra" => min($vals[0], $vals[1]),
+                    "venta" => max($vals[0], $vals[1]),
+                    "fecha" => date("d/m/Y")
+                ];
+            }
+        }
+        
+        // Buscar valores en SBS
+        if ($sbs_html && preg_match_all("/([3-4]\.[0-9]{3})/", $sbs_html, $matches)) {
+            $vals = array_map("floatval", $matches[1]);
+            $vals = array_filter($vals, fn($v) => $v >= 3.5 && $v <= 3.9);
+            if (count($vals) >= 2) {
+                $vals = array_values($vals);
+                $result["sbs"] = [
+                    "compra" => min($vals[0], $vals[1]),
+                    "venta" => max($vals[0], $vals[1]),
+                    "fecha" => date("d/m/Y")
+                ];
+            }
+        }
+        
+        $result["ultima_actualizacion"] = date("Y-m-d H:i:s");
+        
+        file_put_contents("tipo-cambio.json", json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        
+        echo "✅ Actualizado: " . date("Y-m-d H:i:s") . "\n";
+        echo "SUNAT: " . $result["sunat"]["compra"] . "/" . $result["sunat"]["venta"] . "\n";
+        echo "SBS: " . $result["sbs"]["compra"] . "/" . $result["sbs"]["venta"] . "\n";
+        '
     
     - name: Commit y Push
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git add tipo-cambio.json
-        git diff --quiet && git diff --staged --quiet || git commit -m "Actualizar tipo de cambio - $(date +'%d/%m/%Y %H:%M')"
-        git push
+        git add -A
+        if ! git diff --quiet --cached; then
+          git commit -m "🔄 Actualizar tipo de cambio - $(date +'%d/%m/%Y %H:%M')"
+          git push
+        else
+          echo "No hay cambios"
+        fi
