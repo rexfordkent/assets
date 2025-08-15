@@ -1,9 +1,7 @@
 {
   "sunat": {
-    "compra": 3.575,
-    "venta": 3.588,
-    "fecha": "15/08/2025",
-    "fuente": "scraperapi_pattern"
+    "error": true,
+    "message": "No se pudo obtener de SUNAT"
   },
   "sbs": {
     "compra": 3.555,
@@ -11,5 +9,5 @@
     "fecha": "14/08/2025",
     "fuente": "direct_verified"
   },
-  "ultima_actualizacion": "2025-08-15 17:53:38"
+  "ultima_actualizacion": "2025-08-15 17:58:01"
 }
