@@ -147,6 +147,16 @@ jobs:
                     html = response.text
                     soup = BeautifulSoup(html, 'html.parser')
                     
+                    # Buscar la fecha en la pagina de SBS
+                    fecha_sbs = None
+                    fecha_pattern = re.search(r'(\d{1,2})[/-](\d{1,2})[/-](\d{4})', html)
+                    if fecha_pattern:
+                        dia_sbs = int(fecha_pattern.group(1))
+                        mes_sbs = int(fecha_pattern.group(2))
+                        anio_sbs = int(fecha_pattern.group(3))
+                        fecha_sbs = f"{dia_sbs:02d}/{mes_sbs:02d}/{anio_sbs}"
+                        print(f"Fecha encontrada en SBS: {fecha_sbs}")
+                    
                     # Buscar tabla con Dolar de N.A.
                     tables = soup.find_all('table')
                     
@@ -163,10 +173,20 @@ jobs:
                                         
                                         if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
                                             print(f"SBS tabla encontrado: {compra}/{venta}")
+                                            
+                                            # Si no hay fecha o es del dia anterior, ajustar
+                                            dia_actual = datetime.now().day
+                                            if fecha_sbs and dia_sbs < dia_actual:
+                                                fecha_final = fecha_sbs + " (día anterior)"
+                                            elif fecha_sbs:
+                                                fecha_final = fecha_sbs
+                                            else:
+                                                fecha_final = datetime.now().strftime("%d/%m/%Y")
+                                            
                                             return {
                                                 "compra": compra,
                                                 "venta": venta,
-                                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                                "fecha": fecha_final,
                                                 "fuente": "scraperapi"
                                             }
                                     except:
@@ -180,17 +200,24 @@ jobs:
                         
                         if len(valores_unicos) >= 2:
                             print(f"SBS patron: {valores_unicos[0]}/{valores_unicos[1]}")
+                            
+                            # Determinar fecha
+                            if fecha_sbs:
+                                fecha_final = fecha_sbs
+                            else:
+                                fecha_final = datetime.now().strftime("%d/%m/%Y")
+                            
                             return {
                                 "compra": valores_unicos[0],
                                 "venta": valores_unicos[1],
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fecha": fecha_final,
                                 "fuente": "scraperapi_pattern"
                             }
                         elif len(valores_unicos) == 1:
                             return {
                                 "compra": valores_unicos[0],
                                 "venta": valores_unicos[0],
-                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fecha": fecha_sbs if fecha_sbs else datetime.now().strftime("%d/%m/%Y"),
                                 "fuente": "scraperapi_pattern"
                             }
                     
