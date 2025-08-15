@@ -38,40 +38,104 @@ jobs:
         urllib3.disable_warnings()
         
         def get_sunat_scraperapi():
-            """Obtener SUNAT usando ScraperAPI - SIN HARDCODEO"""
+            """Obtener SUNAT usando ScraperAPI - Directo al endpoint de datos"""
             try:
                 print("Obteniendo SUNAT via ScraperAPI...")
                 
                 api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
+                
+                # Primero intentar el endpoint directo de AJAX
+                mes = datetime.now().month
+                anio = datetime.now().year
+                target_url = f"https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/listarTipoCambio?mes={mes}&anho={anio}"
+                
+                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}&render=true"
+                
+                print(f"Intentando endpoint AJAX: {target_url}")
+                
+                try:
+                    response = requests.get(scraper_url, timeout=40)
+                    
+                    if response.status_code == 200:
+                        # Intentar parsear como JSON
+                        try:
+                            data = response.json()
+                            print(f"Respuesta JSON recibida: {len(str(data))} caracteres")
+                            
+                            # Buscar el día actual en los datos
+                            dia_actual = datetime.now().day
+                            
+                            for item in data:
+                                if 'dia' in item and item['dia'] == dia_actual:
+                                    compra = float(item.get('compra', 0))
+                                    venta = float(item.get('venta', 0))
+                                    
+                                    if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                        print(f"SUNAT JSON encontrado: {compra}/{venta}")
+                                        return {
+                                            "compra": compra,
+                                            "venta": venta,
+                                            "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                            "fuente": "scraperapi_ajax"
+                                        }
+                        except:
+                            pass
+                
+                except:
+                    pass
+                
+                # Si falla el AJAX, intentar la página principal con render
+                print("Intentando página principal con render...")
                 target_url = "https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias"
+                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}&render=true"
                 
-                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
-                
-                print(f"URL completa: {scraper_url}")
-                
-                response = requests.get(scraper_url, timeout=40)
+                response = requests.get(scraper_url, timeout=50)
                 
                 print(f"Status: {response.status_code}")
-                print(f"Headers: {response.headers}")
                 print(f"Content length: {len(response.text) if response.text else 0}")
-                
-                if response.status_code == 403:
-                    print("ERROR 403: API key invalida o sin creditos")
-                    return {"error": True, "message": "ScraperAPI sin creditos"}
                 
                 if response.status_code == 200:
                     html = response.text
                     
-                    if len(html) < 100:
-                        print(f"Respuesta muy corta: {html[:100]}")
-                        return {"error": True, "message": "Respuesta invalida de ScraperAPI"}
+                    # Buscar el día actual
+                    dia = datetime.now().day
+                    soup = BeautifulSoup(html, 'html.parser')
                     
-                    # Buscar cualquier valor que parezca tipo de cambio
+                    # Buscar en toda la tabla
+                    all_tds = soup.find_all('td')
+                    
+                    for i, td in enumerate(all_tds):
+                        td_text = td.get_text(strip=True)
+                        
+                        if td_text == str(dia):
+                            print(f"Día {dia} encontrado!")
+                            
+                            # Buscar en las siguientes celdas
+                            for j in range(i+1, min(i+5, len(all_tds))):
+                                next_text = all_tds[j].get_text()
+                                
+                                # Buscar patrones de compra/venta
+                                valores = re.findall(r'(\d+\.\d{3})', next_text)
+                                
+                                if len(valores) >= 2:
+                                    compra = float(valores[0])
+                                    venta = float(valores[1])
+                                    
+                                    if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                        print(f"SUNAT tabla encontrado: {compra}/{venta}")
+                                        return {
+                                            "compra": compra,
+                                            "venta": venta,
+                                            "fecha": f"{dia:02d}/{datetime.now().month:02d}/{datetime.now().year}",
+                                            "fuente": "scraperapi_render"
+                                        }
+                    
+                    # Método fallback: buscar cualquier valor 3.XXX
+                    print("Buscando valores por patrón...")
                     valores = re.findall(r'3\.\d{3}', html)
                     
                     if valores:
                         print(f"Valores encontrados: {valores[:20]}")
-                        
                         valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
                         valores_unicos = list(dict.fromkeys(valores_float))
                         
@@ -79,32 +143,25 @@ jobs:
                             compra = valores_unicos[0]
                             venta = valores_unicos[1]
                             
-                            print(f"SUNAT extraido: {compra}/{venta}")
-                            
+                            print(f"SUNAT patrón: {compra}/{venta}")
                             return {
                                 "compra": compra,
                                 "venta": venta,
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi"
+                                "fuente": "scraperapi_pattern"
                             }
                         elif len(valores_unicos) == 1:
                             val = valores_unicos[0]
-                            print(f"SUNAT un solo valor: {val}")
+                            print(f"SUNAT un valor: {val}")
                             return {
                                 "compra": val,
                                 "venta": val,
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
                                 "fuente": "scraperapi_single"
                             }
-                    else:
-                        print("No se encontraron valores numericos")
-                        
-                else:
-                    print(f"Error HTTP: {response.status_code}")
-                    print(f"Respuesta: {response.text[:500]}")
                     
-            except requests.exceptions.Timeout:
-                print("Timeout en ScraperAPI")
+                    print("No se encontraron valores válidos")
+                    
             except Exception as e:
                 print(f"Error con ScraperAPI: {e}")
                 import traceback
