@@ -38,91 +38,81 @@ jobs:
         urllib3.disable_warnings()
         
         def get_sunat_scraperapi():
-            """Obtener SUNAT usando ScraperAPI"""
+            """Obtener SUNAT - que es igual a SBS del día anterior"""
             try:
-                print("Obteniendo SUNAT via ScraperAPI...")
+                print("Obteniendo SUNAT (SBS del día anterior)...")
                 
-                api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
-                target_url = "https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias"
+                # SUNAT siempre muestra el tipo de cambio de SBS del día anterior
+                # Así que simplemente obtenemos SBS y lo usamos para SUNAT
                 
-                # ScraperAPI endpoint
-                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
+                # Intentar obtener de SBS directamente
+                response = requests.get(
+                    'https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx',
+                    headers={'User-Agent': 'Mozilla/5.0'},
+                    verify=False,
+                    timeout=15
+                )
                 
-                print(f"Consultando ScraperAPI...")
-                response = requests.get(scraper_url, timeout=30)
-                
-                print(f"Status: {response.status_code}")
-                print(f"Content length: {len(response.text)}")
-                
-                if response.status_code == 200 and len(response.text) > 1000:
+                if response.status_code == 200:
                     html = response.text
                     
-                    # Buscar TODOS los valores 3.XXX en el HTML
+                    # Buscar valores 3.XXX
                     valores = re.findall(r'3\.\d{3}', html)
                     
                     if valores:
-                        print(f"Total valores encontrados: {len(valores)}")
-                        print(f"Primeros 30 valores: {valores[:30]}")
-                        
-                        # Para el día 15, necesitamos encontrar sus valores específicos
-                        # Basándonos en la imagen, el día 15 tiene 3.555 para ambos
-                        # Vamos a buscar específicamente 3.555
-                        
-                        count_3555 = valores.count('3.555')
-                        print(f"3.555 aparece {count_3555} veces")
-                        
-                        # Si 3.555 aparece al menos 2 veces, es muy probable que sea el día 15
-                        if count_3555 >= 2:
-                            print(f"SUNAT día 15 detectado: 3.555/3.555")
-                            return {
-                                "compra": 3.555,
-                                "venta": 3.555,
-                                "fecha": f"15/{datetime.now().month:02d}/{datetime.now().year}",
-                                "fuente": "scraperapi"
-                            }
-                        
-                        # Si no encontramos 3.555, intentar con el patrón de posición
-                        # El día 15 estaría aproximadamente en la posición 28-29 (14 días * 2 valores)
-                        dia_actual = datetime.now().day
-                        posicion_estimada = (dia_actual - 1) * 2
-                        
-                        if len(valores) > posicion_estimada + 1:
-                            compra = float(valores[posicion_estimada])
-                            venta = float(valores[posicion_estimada + 1])
-                            
-                            print(f"SUNAT por posición (día {dia_actual}): {compra}/{venta}")
-                            
-                            if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                return {
-                                    "compra": compra,
-                                    "venta": venta,
-                                    "fecha": f"{dia_actual:02d}/{datetime.now().month:02d}/{datetime.now().year}",
-                                    "fuente": "scraperapi_position"
-                                }
-                        
-                        # Fallback: usar los primeros valores válidos encontrados
                         valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
                         valores_unicos = list(dict.fromkeys(valores_float))
                         
-                        if len(valores_unicos) >= 2:
-                            compra = valores_unicos[0]
-                            venta = valores_unicos[1]
-                            print(f"SUNAT fallback: {compra}/{venta}")
+                        if valores_unicos:
+                            # Para SUNAT usamos los mismos valores de SBS
+                            # ya que SUNAT = SBS del día anterior
+                            if len(valores_unicos) >= 2:
+                                compra = valores_unicos[0]
+                                venta = valores_unicos[1]
+                            else:
+                                compra = venta = valores_unicos[0]
+                            
+                            print(f"SUNAT (=SBS día anterior): {compra}/{venta}")
                             return {
                                 "compra": compra,
                                 "venta": venta,
                                 "fecha": datetime.now().strftime("%d/%m/%Y"),
-                                "fuente": "scraperapi_fallback"
+                                "fuente": "sbs_mirror"
+                            }
+                
+                # Si falla el directo, intentar con ScraperAPI
+                print("Intentando con ScraperAPI...")
+                api_key = "a1057c3f6bbe27d6b7c97efa9f6f6f0a"
+                target_url = "https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx"
+                scraper_url = f"http://api.scraperapi.com?api_key={api_key}&url={target_url}"
+                
+                response2 = requests.get(scraper_url, timeout=30)
+                
+                if response2.status_code == 200:
+                    html2 = response2.text
+                    valores = re.findall(r'3\.\d{3}', html2)
+                    
+                    if valores:
+                        valores_float = [float(v) for v in valores if 3.4 <= float(v) <= 3.8]
+                        valores_unicos = list(dict.fromkeys(valores_float))
+                        
+                        if valores_unicos:
+                            if len(valores_unicos) >= 2:
+                                compra = valores_unicos[0]
+                                venta = valores_unicos[1]
+                            else:
+                                compra = venta = valores_unicos[0]
+                            
+                            print(f"SUNAT via ScraperAPI: {compra}/{venta}")
+                            return {
+                                "compra": compra,
+                                "venta": venta,
+                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                "fuente": "scraperapi"
                             }
                     
-                    print("No se encontraron valores")
-                else:
-                    print(f"Error: Status {response.status_code}")
-                    
             except Exception as e:
-                print(f"Error con ScraperAPI: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"Error: {e}")
             
             return {"error": True, "message": "No se pudo obtener de SUNAT"}
         
