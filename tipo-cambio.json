@@ -1,7 +1,7 @@
 {
     "sunat": {
-        "compra": 3.73,
-        "venta": 3.733,
+        "compra": 3.555,
+        "venta": 3.555,
         "fecha": "15\/08\/2025"
     },
     "sbs": {
@@ -9,5 +9,5 @@
         "venta": 3.555,
         "fecha": "15\/08\/2025"
     },
-    "ultima_actualizacion": "2025-08-15 10:15:24"
+    "ultima_actualizacion": "2025-08-15 10:20:24"
 }
