@@ -33,7 +33,7 @@ jobs:
         from bs4 import BeautifulSoup
         import json
         import re
-        from datetime import datetime
+        from datetime import datetime, timedelta
         import urllib3
         urllib3.disable_warnings()
         
@@ -102,7 +102,7 @@ jobs:
                                             return {
                                                 "compra": compra,
                                                 "venta": venta,
-                                                "fecha": datetime.now().strftime("%d/%m/%Y"),
+                                                "fecha": (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y"),
                                                 "fuente": "direct"
                                             }
                                     except:
@@ -124,7 +124,7 @@ jobs:
                         return {
                             "compra": compra,
                             "venta": venta,
-                            "fecha": datetime.now().strftime("%d/%m/%Y"),
+                            "fecha": (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y"),
                             "fuente": "direct"
                         }
                         
