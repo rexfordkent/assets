@@ -260,15 +260,8 @@ jobs:
         sunat_data = get_sunat_scraperapi()
         sbs_data = get_sbs_scraperapi()
         
-        # Si SUNAT falla, usar valores de SBS
-        if sunat_data.get('error') and not sbs_data.get('error'):
-            print("\nSUNAT fallo, usando valores de SBS para ambos")
-            sunat_data = {
-                "compra": sbs_data['compra'],
-                "venta": sbs_data['venta'],
-                "fecha": sbs_data['fecha'],
-                "fuente": "sbs_mirror"
-            }
+        # NO COPIAR VALORES - cada uno debe tener sus propios datos
+        # Si alguno falla, que muestre error, no copiar valores incorrectos
         
         result = {
             "sunat": sunat_data,
