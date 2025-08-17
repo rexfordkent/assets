@@ -98,11 +98,24 @@ jobs:
                                         venta = float(venta_text)
                                         
                                         if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
+                                            # SBS no publica sábados y domingos
+                                            # Si es sábado o domingo, usar fecha del viernes
+                                            fecha_hoy = datetime.now()
+                                            dia_semana = fecha_hoy.weekday()  # 0=Lunes, 6=Domingo
+                                            
+                                            if dia_semana == 5:  # Sábado
+                                                fecha_sbs = fecha_hoy - timedelta(days=1)  # Viernes
+                                            elif dia_semana == 6:  # Domingo
+                                                fecha_sbs = fecha_hoy - timedelta(days=2)  # Viernes
+                                            else:
+                                                # Día de semana: usar día anterior
+                                                fecha_sbs = fecha_hoy - timedelta(days=1)
+                                            
                                             print(f"SBS tabla: Compra={compra}, Venta={venta}")
                                             return {
                                                 "compra": compra,
                                                 "venta": venta,
-                                                "fecha": (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y"),
+                                                "fecha": fecha_sbs.strftime("%d/%m/%Y"),
                                                 "fuente": "direct"
                                             }
                                     except:
@@ -120,11 +133,22 @@ jobs:
                         
                         compra = venta = float(valor_mas_comun)
                         
+                        # Misma lógica para la fecha
+                        fecha_hoy = datetime.now()
+                        dia_semana = fecha_hoy.weekday()
+                        
+                        if dia_semana == 5:  # Sábado
+                            fecha_sbs = fecha_hoy - timedelta(days=1)  # Viernes
+                        elif dia_semana == 6:  # Domingo  
+                            fecha_sbs = fecha_hoy - timedelta(days=2)  # Viernes
+                        else:
+                            fecha_sbs = fecha_hoy - timedelta(days=1)
+                        
                         print(f"SBS patrón: {compra}/{venta}")
                         return {
                             "compra": compra,
                             "venta": venta,
-                            "fecha": (datetime.now() - timedelta(days=1)).strftime("%d/%m/%Y"),
+                            "fecha": fecha_sbs.strftime("%d/%m/%Y"),
                             "fuente": "direct"
                         }
                         
