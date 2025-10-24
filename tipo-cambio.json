@@ -2,14 +2,14 @@
   "sunat": {
     "compra": 3.393,
     "venta": 3.393,
-    "fecha": "23/10/2025",
+    "fecha": "24/10/2025",
     "fuente": "sbs_data"
   },
   "sbs": {
     "compra": 3.393,
     "venta": 3.393,
-    "fecha": "22/10/2025",
+    "fecha": "23/10/2025",
     "fuente": "direct"
   },
-  "ultima_actualizacion": "2025-10-23 23:09:35"
+  "ultima_actualizacion": "2025-10-24 00:45:39"
 }
