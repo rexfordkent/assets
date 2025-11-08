@@ -65,7 +65,7 @@ jobs:
             """Obtener SBS - Solo método directo sin ScraperAPI"""
             try:
                 print("\nObteniendo SBS...")
-                
+
                 # Solo método directo, sin ScraperAPI
                 response = requests.get(
                     'https://www.sbs.gob.pe/app/pp/sistip_portal/paginas/publicacion/tipocambiopromedio.aspx',
@@ -73,88 +73,109 @@ jobs:
                     verify=False,
                     timeout=15
                 )
-                
+
                 if response.status_code == 200:
                     html = response.text
                     soup = BeautifulSoup(html, 'html.parser')
-                    
+
+                    # Extraer la fecha directamente del HTML
+                    fecha_sbs = None
+                    fecha_span = soup.find('span', {'id': lambda x: x and 'lblFecha' in x})
+                    if fecha_span:
+                        fecha_texto = fecha_span.get_text(strip=True)
+                        # Extraer fecha del formato "Tipo de Cambio al 07/11/2025"
+                        fecha_match = re.search(r'(\d{2}/\d{2}/\d{4})', fecha_texto)
+                        if fecha_match:
+                            fecha_sbs = fecha_match.group(1)
+                            print(f"Fecha extraída del HTML: {fecha_sbs}")
+
                     # Buscar la tabla específica del dólar
                     tables = soup.find_all('table')
-                    
+
                     for table in tables:
                         rows = table.find_all('tr')
                         for row in rows:
                             celdas = row.find_all('td')
                             if len(celdas) >= 3:
                                 texto = celdas[0].get_text(strip=True)
-                                
+
                                 # Buscar específicamente "Dólar de N.A."
                                 if 'lar de N.A.' in texto or 'Dólar de N.A.' in texto:
                                     try:
                                         compra_text = celdas[1].get_text(strip=True)
                                         venta_text = celdas[2].get_text(strip=True)
-                                        
+
                                         compra = float(compra_text)
                                         venta = float(venta_text)
-                                        
-                                        if 3.4 <= compra <= 3.8 and 3.4 <= venta <= 3.8:
-                                            # SBS no publica sábados y domingos
-                                            # Si es sábado o domingo, usar fecha del viernes
-                                            fecha_hoy = datetime.now()
-                                            dia_semana = fecha_hoy.weekday()  # 0=Lunes, 6=Domingo
-                                            
-                                            if dia_semana == 5:  # Sábado
-                                                fecha_sbs = fecha_hoy - timedelta(days=1)  # Viernes
-                                            elif dia_semana == 6:  # Domingo
-                                                fecha_sbs = fecha_hoy - timedelta(days=2)  # Viernes
-                                            else:
-                                                # Día de semana: usar día anterior
-                                                fecha_sbs = fecha_hoy - timedelta(days=1)
-                                            
-                                            print(f"SBS tabla: Compra={compra}, Venta={venta}")
+
+                                        if 3.0 <= compra <= 4.0 and 3.0 <= venta <= 4.0:
+                                            # Si no se pudo extraer la fecha del HTML, calcularla
+                                            if not fecha_sbs:
+                                                fecha_hoy = datetime.now()
+                                                dia_semana = fecha_hoy.weekday()  # 0=Lunes, 6=Domingo
+
+                                                if dia_semana == 5:  # Sábado
+                                                    fecha_calc = fecha_hoy - timedelta(days=1)  # Viernes
+                                                elif dia_semana == 6:  # Domingo
+                                                    fecha_calc = fecha_hoy - timedelta(days=2)  # Viernes
+                                                else:
+                                                    # Día de semana: SBS publica del día anterior
+                                                    fecha_calc = fecha_hoy - timedelta(days=1)
+
+                                                fecha_sbs = fecha_calc.strftime("%d/%m/%Y")
+
+                                            print(f"SBS tabla: Compra={compra}, Venta={venta}, Fecha={fecha_sbs}")
                                             return {
                                                 "compra": compra,
                                                 "venta": venta,
-                                                "fecha": fecha_sbs.strftime("%d/%m/%Y"),
+                                                "fecha": fecha_sbs,
                                                 "fuente": "direct"
                                             }
-                                    except:
+                                    except Exception as e:
+                                        print(f"Error parsing fila: {e}")
                                         pass
-                    
+
                     # Si no encuentra en tabla, buscar valores 3.XXX
+                    print("No se encontró en tabla, buscando por patrón...")
                     valores = re.findall(r'3\.\d{3}', html)
-                    
-                    if valores:
-                        # Para SBS, normalmente compra y venta son iguales
-                        # Buscar el valor más frecuente
-                        from collections import Counter
-                        contador = Counter(valores)
-                        valor_mas_comun = contador.most_common(1)[0][0]
-                        
-                        compra = venta = float(valor_mas_comun)
-                        
-                        # Misma lógica para la fecha
-                        fecha_hoy = datetime.now()
-                        dia_semana = fecha_hoy.weekday()
-                        
-                        if dia_semana == 5:  # Sábado
-                            fecha_sbs = fecha_hoy - timedelta(days=1)  # Viernes
-                        elif dia_semana == 6:  # Domingo  
-                            fecha_sbs = fecha_hoy - timedelta(days=2)  # Viernes
-                        else:
-                            fecha_sbs = fecha_hoy - timedelta(days=1)
-                        
-                        print(f"SBS patrón: {compra}/{venta}")
+
+                    if valores and len(valores) >= 2:
+                        # Tomar los primeros dos valores únicos encontrados
+                        valores_unicos = []
+                        for v in valores:
+                            if v not in valores_unicos:
+                                valores_unicos.append(v)
+                            if len(valores_unicos) == 2:
+                                break
+
+                        compra = float(valores_unicos[0])
+                        venta = float(valores_unicos[1]) if len(valores_unicos) > 1 else compra
+
+                        # Si no se pudo extraer la fecha del HTML, calcularla
+                        if not fecha_sbs:
+                            fecha_hoy = datetime.now()
+                            dia_semana = fecha_hoy.weekday()
+
+                            if dia_semana == 5:  # Sábado
+                                fecha_calc = fecha_hoy - timedelta(days=1)  # Viernes
+                            elif dia_semana == 6:  # Domingo
+                                fecha_calc = fecha_hoy - timedelta(days=2)  # Viernes
+                            else:
+                                fecha_calc = fecha_hoy - timedelta(days=1)
+
+                            fecha_sbs = fecha_calc.strftime("%d/%m/%Y")
+
+                        print(f"SBS patrón: Compra={compra}, Venta={venta}, Fecha={fecha_sbs}")
                         return {
                             "compra": compra,
                             "venta": venta,
-                            "fecha": fecha_sbs.strftime("%d/%m/%Y"),
+                            "fecha": fecha_sbs,
                             "fuente": "direct"
                         }
-                        
+
             except Exception as e:
                 print(f"Error SBS: {e}")
-            
+
             return {"error": True, "message": "No se pudo obtener de SBS"}
         
         # Ejecutar
