@@ -1,53 +1,53 @@
 {
   "ovacion": {
-    "radio": "https://ujjina.com:1963/ipradioovacion1/liveovacion1radio/playlist.m3u8",
-    "tv": "https://ujjina.com:1963/iptvovacion2/liveovacion2tv/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioovacion1/liveovacion1radio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvovacion2/liveovacion2tv/playlist.m3u8"
   },
   "ovacion2": {
-    "radio": "https://ujjina.com:1963/ipradioovacion2/liveovacion2radio/playlist.m3u8",
-    "tv": "https://ujjina.com:1963/iptvovacion1/liveovacion1tv/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioovacion2/liveovacion2radio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvovacion1/liveovacion1tv/playlist.m3u8"
   },
   "rcrperu": {
-    "radio": "https://ujjina.com:1963/ipradioalfilpress/livealfilpressradio/playlist.m3u8",
-    "tv": "https://ujjina.com:1963/iptvrcrperu/livercrperutv/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioalfilpress/livealfilpressradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvrcrperu/livercrperutv/playlist.m3u8"
   },
   "antares": {
-    "radio": "https://ujjina.com:1963/ipradioantares/liveantaresradio/playlist.m3u8",
-    "tv": "https://ujjina.com:1963/iptvantares/liveantarestv/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioantares/liveantaresradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvantares/liveantarestv/playlist.m3u8"
   },
   "nazarenas": {
-    "radio": "https://ujjina.com:1963/ipradionazarenas/livenazarenasradio/playlist.m3u8",
-    "tv": "https://ujjina.com:1963/iptvnazarenas/livenazarenastv/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradionazarenas/livenazarenasradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvnazarenas/livenazarenastv/playlist.m3u8"
   },
   "bambas": {
-    "radio": "https://ujjina.com:1963/ipradiobambas971fm/livebambas971fmradio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiobambas971fm/livebambas971fmradio/playlist.m3u8"
   },
   "lasbambas1": {
-    "radio": "https://ujjina.com:1963/ipradiolasbambas1/livelasbambas1radio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiolasbambas1/livelasbambas1radio/playlist.m3u8"
   },
   "lasbambas2": {
-    "radio": "https://ujjina.com:1963/ipradiolasbambas2/livelasbambas2radio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiolasbambas2/livelasbambas2radio/playlist.m3u8"
   },
   "lasbambas3": {
-    "radio": "https://ujjina.com:1963/ipradiolasbambas3/livelasbambas3radio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiolasbambas3/livelasbambas3radio/playlist.m3u8"
   },
   "lasbambas4": {
-    "radio": "https://ujjina.com:1963/ipradiolasbambas4/livelasbambas4radio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiolasbambas4/livelasbambas4radio/playlist.m3u8"
   },
   "lasbambas5": {
-    "radio": "https://ujjina.com:1963/ipradiolasbambas5/livelasbambas5radio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiolasbambas5/livelasbambas5radio/playlist.m3u8"
   },
   "surphuy": {
-    "radio": "https://ujjina.com:1963/ipradiosurphuy/livesurphuyradio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiosurphuy/livesurphuyradio/playlist.m3u8"
   },
   "yanacancha": {
-    "radio": "https://ujjina.com:1963/ipradioyanacancha/liveyanacancharadio/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradioyanacancha/liveyanacancharadio/playlist.m3u8"
   },
   "cabecerarcrperu": {
     "tv": "http://206.217.202.3:8090/hls/rcr_peru_srt/index.m3u8"
   },
   "demo": {
-    "radio": "https://ujjina.com:1963/ipradiodemo/livedemoradio/playlist.m3u8",
-    "tv": "https://ujjina.com:1963/iptvdemo/livedemotv/playlist.m3u8"
+    "radio": "https://5c3fb01839654.streamlock.net:1963/ipradiodemo/livedemoradio/playlist.m3u8",
+    "tv": "https://5c3fb01839654.streamlock.net:1963/iptvdemo/livedemotv/playlist.m3u8"
   }
 }
