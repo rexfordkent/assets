@@ -1,7 +1,9 @@
 {
   "sunat": {
-    "error": true,
-    "message": "No se pudo obtener de SUNAT"
+    "compra": 3.365,
+    "venta": 3.374,
+    "fecha": "03/12/2025",
+    "fuente": "sbs_data"
   },
   "sbs": {
     "compra": 3.365,
@@ -9,5 +11,5 @@
     "fecha": "02/12/2025",
     "fuente": "direct"
   },
-  "ultima_actualizacion": "2025-12-03 02:30:18"
+  "ultima_actualizacion": "2025-12-03 03:44:59"
 }
