@@ -4,10 +4,8 @@
     "message": "No se pudo obtener de SUNAT"
   },
   "sbs": {
-    "compra": 3.35,
-    "venta": 3.361,
-    "fecha": "27/02/2026",
-    "fuente": "direct"
+    "error": true,
+    "message": "No se pudo obtener de SBS"
   },
-  "ultima_actualizacion": "2026-02-28 04:47:16"
+  "ultima_actualizacion": "2026-02-28 05:25:42"
 }
