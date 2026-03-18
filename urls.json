@@ -50,5 +50,10 @@
   "demo": {
     "radio": "https://5949aa132c8fb.streamlock.net:1963/ipradiodemo/livedemoradio/playlist.m3u8",
     "tv": "https://5949aa132c8fb.streamlock.net:1963/iptvdemo/livedemotv/playlist.m3u8"
+  },
+  "surandinotv": {
+    "tv": "https://5949aa132c8fb.streamlock.net:1963/iptvsurandinotv/livesurandinotvtv/playlist.m3u8",
+    "radiolima": "https://5949aa132c8fb.streamlock.net:1963/ipradiosurandinotvlima/livesurandinotvlimaradio/playlist.m3u8",
+    "radiocurasco": "https://5949aa132c8fb.streamlock.net:1963/ipradiosurandinotvcurasco/livesurandinotvcurascoradio/playlist.m3u8"
   }
 }
