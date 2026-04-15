@@ -6,8 +6,10 @@
     "fuente": "sbs_data"
   },
   "sbs": {
-    "error": true,
-    "message": "No se pudo obtener de SBS"
+    "compra": 3.38,
+    "venta": 3.39,
+    "fecha": "14/04/2026",
+    "fuente": "direct"
   },
-  "ultima_actualizacion": "2026-04-15 17:01:25"
+  "ultima_actualizacion": "2026-04-15 18:59:03"
 }
