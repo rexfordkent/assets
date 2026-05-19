@@ -17,7 +17,13 @@
   },
   "nazarenas": {
     "radio": "https://5949aa132c8fb.streamlock.net:1963/ipradionazarenas/livenazarenasradio/playlist.m3u8",
-    "tv": "https://5949aa132c8fb.streamlock.net:1963/iptvnazarenas/livenazarenastv/playlist.m3u8"
+    "tv": "https://5949aa132c8fb.streamlock.net:1963/iptvnazarenas/livenazarenastv/playlist.m3u8",
+    "enlace0": "https://edge.ujjina.live/s/hls/srt_nazarenas/index.m3u8",
+    "enlace1": "https://edge.ujjina.live/s/hls/srt_nazarenas1/index.m3u8",
+    "enlace2": "https://edge.ujjina.live/s/hls/srt_nazarenas2/index.m3u8",
+    "enlace3": "https://edge.ujjina.live/s/hls/srt_nazarenas3/index.m3u8",
+    "enlace4": "https://edge.ujjina.live/s/hls/srt_nazarenas4/index.m3u8",
+    "enlace5": "https://edge.ujjina.live/s/hls/srt_nazarenas5/index.m3u8"
   },
   "bambas": {
     "radio": "https://5949aa132c8fb.streamlock.net:1963/ipradiobambas971fm/livebambas971fmradio/playlist.m3u8"
@@ -44,8 +50,9 @@
     "radio": "https://5949aa132c8fb.streamlock.net:1963/ipradioyanacancha/liveyanacancharadio/playlist.m3u8"
   },
   "cabecerarcrperu": {
-    "tv": "http://72.46.85.125:8090/hls/rcr_peru_srt/index.m3u8",
-    "radio": "http://72.46.85.125:8090/hls/srt_demo/index.m3u8"
+    "tv": "https://edge.ujjina.live/s/hls/rcr_peru_srt/index.m3u8",
+    "radiotv1": "https://edge.ujjina.live/s/hls/srt_demo/index.m3u8",
+    "radiotv2": "https://edge.ujjina.live/s/hls/srt_demo1/index.m3u8"
   },
   "demo": {
     "radio": "https://5949aa132c8fb.streamlock.net:1963/ipradiodemo/livedemoradio/playlist.m3u8",
