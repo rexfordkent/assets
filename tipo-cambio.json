@@ -2,7 +2,7 @@
   "sunat": {
     "compra": 3.399,
     "venta": 3.411,
-    "fecha": "29/07/2026",
+    "fecha": "30/07/2026",
     "fuente": "sbs_data"
   },
   "sbs": {
@@ -11,5 +11,5 @@
     "fecha": "24/07/2026",
     "fuente": "direct"
   },
-  "ultima_actualizacion": "2026-07-29 23:52:01"
+  "ultima_actualizacion": "2026-07-30 01:20:22"
 }
